@@ -33,7 +33,7 @@ _UART_SERVICE = (
 
 
 class BLESimplePeripheral:
-    def __init__(self, ble, name="pico-uart"):
+    def __init__(self, ble, name="AusSport-Scoreboard"):
         self._ble = ble
         self._ble.active(True)
         self._ble.irq(self._irq)
@@ -42,6 +42,7 @@ class BLESimplePeripheral:
         self._write_callback = None
         self._payload = advertising_payload(name=name, services=[_UART_UUID])
         self._advertise()
+
 
     def _irq(self, event, data):
         # Track connections so we can send notifications.

@@ -19,7 +19,7 @@ led_state = 0
 def on_rx(data):
     print("Data received: ", data)  # Print the received data
     global led_state  # Access the global variable led_state
-    if data == b'toggle\r\n':  # Check if the received data is "toggle"
+    if data == b'toggle':  # Check if the received data is "toggle"
         led.value(not led_state)  # Toggle the LED state (on/off)
         led_state = 1 - led_state  # Update the LED state
 
