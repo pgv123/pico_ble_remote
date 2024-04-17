@@ -1,15 +1,9 @@
-# June 2023
-# Bluetooth cores specification versio 5.4 (0x0D)
-# Bluetooth Remote Control
-# Kevin McAleer
-# KevsRobot.com
+import sys
 
 import aioble
 import bluetooth
 import machine
 import uasyncio as asyncio
-
-# Bluetooth UUIDS can be found online at https://www.bluetooth.com/specifications/gatt/services/
 from micropython import const
 
 _FLAG_READ = const(0x0002)
@@ -28,18 +22,24 @@ SERIAL_NUMBER_ID = const(0x2A25)
 HARDWARE_REVISION_ID = const(0x2A26)
 BLE_VERSION_ID = const(0x2A28)
 
+#button_a = Button(12)
+#button_b = Button(13)
+#button_x = Button(14)
+#button_y = Button(15)
+
+led = machine.Pin("LED", machine.Pin.OUT)
+
 _DEVICE_INFO_UUID = bluetooth.UUID(0x180A) # Device Information
+_GENERIC = bluetooth.UUID(0x1848)
+_BUTTON_UUID = bluetooth.UUID(0x2A6E)
+_ROBOT = bluetooth.UUID(0x1800)
 
 #this is the generic Nordic Uart Service UUID, it supports two characteristics - TX and RX
 _UART_UUID = bluetooth.UUID("6E400001-B5A3-F393-E0A9-E50E24DCCA9E")
 _TX_UUID = bluetooth.UUID("6E400003-B5A3-F393-E0A9-E50E24DCCA9E")
 _RX_UUID = bluetooth.UUID("6E400002-B5A3-F393-E0A9-E50E24DCCA9E")
-
+                              
 _BLE_APPEARANCE_GENERIC_REMOTE_CONTROL = const(384)
-
-led = machine.Pin("LED", machine.Pin.OUT)
-connected = False
-alive = False
 
 ADV_INTERVAL_MS = 250_000
 
@@ -65,10 +65,10 @@ button_characteristic = aioble.Characteristic(
 _UART_TX = (    _TX_UUID,    _FLAG_READ | _FLAG_NOTIFY,   )
 _UART_RX = (    _RX_UUID,    _FLAG_WRITE | _FLAG_WRITE_NO_RESPONSE,  )
 
-rx_characteristic = aioble.Characteristic(
+tx_characteristic = aioble.Characteristic(
     uart_service, _RX_UUID, write=True, notify=False)
 
-tx_characteristic = aioble.Characteristic(
+rx_characteristic = aioble.Characteristic(
     uart_service, _TX_UUID, read=True, notify=True)
 
 print("Registering services")
@@ -88,62 +88,48 @@ async def remote_task():
 
         await asyncio.sleep_ms(10)
 
-
-async def blink_task():
-    """ Blink the LED on and off every second """
-    
-    toggle = True
-    
-    while True and alive:
-        led.value(toggle)
-        toggle = not toggle
-        # print(f'blink {toggle}, connected: {connected}')
-        if connected:
-            blink = 1000
-        else:
-            blink = 250
-        await asyncio.sleep_ms(blink)
-
 async def peripheral_task():
-    print('starting peripheral task')
-    global connected
-    connected = False
-    device = await find_connection()
-    if not device:
-        print("Cannot find a connection")
-        return
-    try:
-        print("Connecting to", device)
-        connection = await device.connect()
+    """ Task to handle peripheral """
+    global connected, connection
+    while True:
+        connected = False
+        async with await aioble.advertise(
+            ADV_INTERVAL_MS,
+            name="AusSport Scoreboard",
+            appearance=_BLE_APPEARANCE_GENERIC_REMOTE_CONTROL,
+            services=[_ROBOT]
+        ) as connection:
+            print("Connection from, ", connection.device)
+            connected = True
+            print("connected {connected}")
+            await connection.disconnected()
+            print("disconnected")
+
+async def rx_task():
+    global connected, connection
+    
+    await rx_characteristic.subscribe(notify=True)
+    while True:
+        data = await rx_characteristic.notified()
         
-    except asyncio.TimeoutError:
-        print("Timeout during connection")
-        return
-      
-    async with connection:
-        print("Connected")
-        connected = True
-        alive = True
-        while True and alive:
-            try:
-                robot_service = await connection.service(_REMOTE_UUID)
-                print(robot_service)
-                control_characteristic = await robot_service.characteristic(_REMOTE_CHARACTERISTICS_UUID)
-                print(control_characteristic)
-            except asyncio.TimeoutError:
-                print("Timeout discovering services/characteristics")
-                return
-            
-            while True:
-                if control_characteristic == None:
+        if connected == True:
+            print("Connected in RX")
+            alive = True
+        else:
+            alive = False
+    
+            while True and alive:
+
+
+                if rx_characteristic == None:
                     print('no characteristic')
                     await asyncio.sleep_ms(10)
                     return
                 
-                if control_characteristic != None:
+                if rx_characteristic != None:
                     try:
-                        command = await control_characteristic.read()
-
+                        command = await rx_characteristic.read()
+                        print (f"Command: {command}")
                         if command == b'a':
                             print("a button pressed")
                         elif command == b'b':
@@ -170,15 +156,30 @@ async def peripheral_task():
                         alive = False
                         return
                 await asyncio.sleep_ms(1)
-                
+
+
+
+async def blink_task():
+    """ Task to blink LED """
+    toggle = True
+    while True:
+        led.value(toggle)
+        toggle = not toggle
+        blink = 1000
+        if connected:
+            blink = 1000
+        else:
+            blink = 250
+        await asyncio.sleep_ms(blink)
 
 async def main():
-    tasks = []
+
     tasks = [
-        asyncio.create_task(blink_task()),
         asyncio.create_task(peripheral_task()),
+        asyncio.create_task(remote_task()),
+        asyncio.create_task(blink_task()),
+        asyncio.create_task(rx_task()),
     ]
     await asyncio.gather(*tasks)
-    
-while True:
-    asyncio.run(main())
+
+asyncio.run(main())
