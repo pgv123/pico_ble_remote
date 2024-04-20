@@ -33,8 +33,9 @@ _UART_SERVICE = (
 
 
 class BLESimplePeripheral:
-    def __init__(self, ble, name="AusSport-Scoreboard"):
+    def __init__(self, ble, name):
         self._ble = ble
+        self._name = name
         self._ble.active(True)
         self._ble.irq(self._irq)
         ((self._handle_tx, self._handle_rx),) = self._ble.gatts_register_services((_UART_SERVICE,))
@@ -71,6 +72,7 @@ class BLESimplePeripheral:
 
     def _advertise(self, interval_us=500000):
         print("Starting advertising")
+        print("For ",self._name)
         self._ble.gap_advertise(interval_us, adv_data=self._payload)
 
     def on_write(self, callback):
@@ -79,7 +81,7 @@ class BLESimplePeripheral:
 
 def demo():
     ble = bluetooth.BLE()
-    p = BLESimplePeripheral(ble)
+    p = BLESimplePeripheral(ble, "test1")
 
     def on_rx(v):
         print("RX", v)
