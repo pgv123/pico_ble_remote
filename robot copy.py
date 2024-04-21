@@ -30,10 +30,11 @@ BLE_VERSION_ID = const(0x2A28)
 
 _DEVICE_INFO_UUID = bluetooth.UUID(0x180A) # Device Information
 
-#this is the generic Nordic Uart Service UUID, it supports two characteristics - TX and RX
-_UART_UUID = bluetooth.UUID("6E400001-B5A3-F393-E0A9-E50E24DCCA9E")
-_TX_UUID = bluetooth.UUID("6E400003-B5A3-F393-E0A9-E50E24DCCA9E")
-_RX_UUID = bluetooth.UUID("6E400002-B5A3-F393-E0A9-E50E24DCCA9E")
+#these UUIDs were generated using uuidgenerator.net
+#the UART service and it's two characteristics - TX and RX
+_UART_UUID = bluetooth.UUID("96cc48d1-2dac-49eb-b063-b15692349b8a")
+_TX_UUID = bluetooth.UUID("e1f8cfaa-9c2d-493e-83b1-a0dc5a7850bc")
+_RX_UUID = bluetooth.UUID("49dacc47-3b9a-464c-8899-9ffb90785c28")
 
 _BLE_APPEARANCE_GENERIC_REMOTE_CONTROL = const(384)
 
