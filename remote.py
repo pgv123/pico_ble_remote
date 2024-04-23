@@ -7,9 +7,10 @@ import sys
 import aioble
 import bluetooth
 import machine
+from machine import Pin
 import uasyncio as asyncio
 from micropython import const
-from pimoroni import Button
+
 
 def uid():
     """ Return the unique id of the device as a string """
@@ -22,10 +23,10 @@ SERIAL_NUMBER_ID = const(0x2A25)
 HARDWARE_REVISION_ID = const(0x2A26)
 BLE_VERSION_ID = const(0x2A28)
 
-button_a = Button(12)
-button_b = Button(13)
-button_x = Button(14)
-button_y = Button(15)
+button_a = Pin(12, mode=Pin.IN, pull=Pin.PULL_UP)
+button_b = Pin(13, mode=Pin.IN, pull=Pin.PULL_UP)
+button_x = Pin(14, mode=Pin.IN, pull=Pin.PULL_UP)
+button_y = Pin(15, mode=Pin.IN, pull=Pin.PULL_UP)
 
 led = machine.Pin("LED", machine.Pin.OUT)
 
@@ -69,19 +70,19 @@ async def remote_task():
             print('not connected')
             await asyncio.sleep_ms(1000)
             continue
-        if button_a.read():
+        if not button_a.value():
             print(f'Button A pressed, connection is: {connection}')
             button_characteristic.write(b"a")   
             button_characteristic.notify(connection,b"a")
-        elif button_b.read():
+        elif not button_b.value():
             print('Button B pressed')
             button_characteristic.write(b"b")
             button_characteristic.notify(connection,b"b")
-        elif button_x.read():
+        elif not button_x.value():
             print('Button X pressed')
             button_characteristic.write(b"x")
             button_characteristic.notify(connection,b"x")
-        elif button_y.read():
+        elif not button_y.value():
             print('Button Y pressed')
             button_characteristic.write(b"y")
             button_characteristic.notify(connection,b"x")

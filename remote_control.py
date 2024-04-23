@@ -51,24 +51,24 @@ connection = None
 aioble.Characteristic(device_info, bluetooth.UUID(MANUFACTURER_ID), read=True, initial="AusSport")
 aioble.Characteristic(device_info, bluetooth.UUID(MODEL_NUMBER_ID), read=True, initial="1.0")
 aioble.Characteristic(device_info, bluetooth.UUID(SERIAL_NUMBER_ID), read=True, initial=uid())
-aioble.Characteristic(device_info, bluetooth.UUID(HARDWARE_REVISION_ID), read=True, initial=sys.version)
+aioble.Characteristic(device_info, bluetooth.UUID(HARDWARE_REVISION_ID), read=True, initial="1.0") #sys.version)
 aioble.Characteristic(device_info, bluetooth.UUID(BLE_VERSION_ID), read=True, initial="1.0")
 
 remote_service = aioble.Service(_GENERIC)
 uart_service = aioble.Service(_UART_UUID)
 
-button_characteristic = aioble.Characteristic(
-    remote_service, _BUTTON_UUID, read=True, notify=True)
+#button_characteristic = aioble.Characteristic(
+ #   remote_service, _BUTTON_UUID, read=True, notify=True)
 
 
-
-_UART_TX = (    _TX_UUID,    _FLAG_READ | _FLAG_NOTIFY,   )
 _UART_RX = (    _RX_UUID,    _FLAG_WRITE | _FLAG_WRITE_NO_RESPONSE,  )
+_UART_TX = (    _TX_UUID,    _FLAG_READ | _FLAG_NOTIFY,   )
 
-tx_characteristic = aioble.Characteristic(
-    uart_service, _RX_UUID, write=True, notify=False)
 
 rx_characteristic = aioble.Characteristic(
+    uart_service, _RX_UUID, write=True, notify=False, capture=True)
+
+tx_characteristic = aioble.Characteristic(
     uart_service, _TX_UUID, read=True, notify=True)
 
 print("Registering services")
@@ -79,23 +79,24 @@ connected = False
 
 async def remote_task():
     """ Task to handle remote control """
-
+    print("remote task started")
     while True:
         if not connected:
             print("Not Connected")
             await asyncio.sleep_ms(1000)
             continue
 
-        await asyncio.sleep_ms(10)
+        await asyncio.sleep_ms(100)
 
 async def peripheral_task():
     """ Task to handle peripheral """
+    print('peripheral task started')
     global connected, connection
     while True:
         connected = False
         async with await aioble.advertise(
             ADV_INTERVAL_MS,
-            name="AusSport Scoreboard",
+            name="AusSport Scoreboardssss",
             appearance=_BLE_APPEARANCE_GENERIC_REMOTE_CONTROL,
             services=[_UART_UUID]
         ) as connection:
@@ -107,57 +108,58 @@ async def peripheral_task():
 
 async def rx_task():
     global connected, connection
-    
+    print('rx task started')
     while True:
         if connected == True:
-            print("Connected in RX")
+           # print("Connected in RX")
             alive = True
         else:
+            print("Not Connected")
             alive = False
+            await asyncio.sleep_ms(100)
+            continue
     
-            while True and alive:
-
-
-                if rx_characteristic == None:
-                    print('no characteristic')
-                    await asyncio.sleep_ms(10)
-                    return
-                
-                if rx_characteristic != None:
-                    try:
-                        command = await rx_characteristic.read()
-                        print (f"Command: {command}")
-                        if command == b'a':
-                            print("a button pressed")
-                        elif command == b'b':
-                            print("b button pressed")
-                        elif command == b'x':
-                            print("x button pressed")
-                        elif command == b'y':
-                            print("y button pressed")
-                        await asyncio.sleep_ms(1)
+        if alive == True:
+             
+            if rx_characteristic != None:
+                try:
+                    #command = rx_characteristic(..., capture=True)
+                    print("Trying for written in RX")
+                    rec_val = await rx_characteristic.write()  #rx_characteristic.write()
+                    print (f"Command: {rec_val}")
+                    if rec_val == b'a':
+                        print("a button pressed")
+                    elif rec_val == b'b':
+                        print("b button pressed")
+                    elif rec_val == b'x':
+                        print("x button pressed")
+                    elif rec_val == b'y':
+                        print("y button pressed")
+                    await asyncio.sleep_ms(50)
                         
-                    except TypeError:
-                        print(f'something went wrong; remote disconnected?')
-                        connected = False
-                        alive = False
-                        return
-                    except asyncio.TimeoutError:
-                        print(f'something went wrong; timeout error?')
-                        connected = False
-                        alive = False
-                        return
-                    except asyncio.GattError:
-                        print(f'something went wrong; Gatt error - did the remote die?')
-                        connected = False
-                        alive = False
-                        return
-                await asyncio.sleep_ms(1)
+                except TypeError:
+                    print(f'something went wrong; remote disconnected?')
+                    connected = False
+                    alive = False
+                    return
+                except asyncio.TimeoutError:
+                    print(f'something went wrong; timeout error?')
+                    connected = False
+                    alive = False
+                    return
+                except asyncio.GattError:
+                    print(f'something went wrong; Gatt error - did the remote die?')
+                    connected = False
+                    alive = False
+                    return
+            await asyncio.sleep_ms(1)
 
 
 
 async def blink_task():
     """ Task to blink LED """
+    print ('blink task started')
+    global connected
     toggle = True
     while True:
         led.value(toggle)
@@ -166,6 +168,7 @@ async def blink_task():
         if connected:
             blink = 1000
         else:
+           # print ("Not Connected")
             blink = 250
         await asyncio.sleep_ms(blink)
 
@@ -173,7 +176,7 @@ async def main():
 
     tasks = [
         asyncio.create_task(peripheral_task()),
-        asyncio.create_task(remote_task()),
+ #       asyncio.create_task(remote_task()),
         asyncio.create_task(blink_task()),
         asyncio.create_task(rx_task()),
     ]
