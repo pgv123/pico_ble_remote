@@ -73,7 +73,7 @@ tx_characteristic = aioble.Characteristic(
 
 print("Registering services")
 
-aioble.register_services(uart_service, device_info)
+aioble.register_services(uart_service) #, device_info)
 
 connected = False
 
@@ -103,7 +103,7 @@ async def peripheral_task():
             print("Connection from, ", connection.device)
             connected = True
             print("connected {connected}")
-            await connection.disconnected()
+            await connection.disconnected(timeout_ms=None)
             print("disconnected")
 
 async def rx_task():
@@ -122,10 +122,11 @@ async def rx_task():
         if alive == True:
              
             if rx_characteristic != None:
+                await rx_characteristic.written()
                 try:
-                    #command = rx_characteristic(..., capture=True)
+                    
                     print("Trying for written in RX")
-                    rec_val = await rx_characteristic.write()  #rx_characteristic.write()
+                    rec_val = rx_characteristic.read()  
                     print (f"Command: {rec_val}")
                     if rec_val == b'a':
                         print("a button pressed")
@@ -152,7 +153,17 @@ async def rx_task():
                     connected = False
                     alive = False
                     return
-            await asyncio.sleep_ms(1)
+                except asyncio.CancelledError:
+                    print(f'Connection Cancelled')
+                    connected = False
+                    alive = False
+                    return
+        
+        await connection.disconnected()
+        print("disconnected")
+        alive = False
+                    
+        await asyncio.sleep_ms(1)
 
 
 
