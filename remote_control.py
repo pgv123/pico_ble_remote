@@ -153,11 +153,12 @@ async def rx_task():
                     connected = False
                     alive = False
                     return
-                except asyncio.CancelledError:
-                    print(f'Connection Cancelled')
+                except Exception as e:
+                    print(f"something went wrong: {e}")
                     connected = False
                     alive = False
-                    return
+                    break
+
         
         await connection.disconnected()
         print("disconnected")
