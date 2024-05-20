@@ -2,7 +2,7 @@ import sys
 
 import aioble
 import bluetooth
-import machine
+from machine import ADC, Pin
 import uasyncio as asyncio
 from micropython import const
 
@@ -27,7 +27,7 @@ BLE_VERSION_ID = const(0x2A28)
 #button_x = Button(14)
 #button_y = Button(15)
 
-led = machine.Pin("LED", machine.Pin.OUT)
+led = Pin("LED", Pin.OUT)
 
 _DEVICE_INFO_UUID = bluetooth.UUID(0x180A) # Device Information
 _GENERIC = bluetooth.UUID(0x1848)
@@ -76,6 +76,14 @@ print("Registering services")
 aioble.register_services(uart_service, device_info)
 
 connected = False
+
+def measure_vsys():
+    Pin(25, Pin.OUT, value=1)
+    Pin(29, Pin.IN, pull=None)
+    reading = ADC(3).read_u16() * 9.9 / 2**16
+    Pin(25, Pin.OUT, value=0, pull=Pin.PULL_DOWN)
+    Pin(29, Pin.ALT, pull=Pin.PULL_DOWN, alt=7)
+    return reading
 
 async def remote_task():
     """ Task to handle remote control """
@@ -162,19 +170,15 @@ async def rx_task():
                     return
             await asyncio.sleep_ms(1)
 
-async def blink_on_read():
-    print ('blink on read started')
+async def read_voltage():
+    print ('read voltage started')
     global connected
-    global read_char
+    
     toggle = True
     while True:
-        if read_char:
-            led.value(toggle)
-            toggle = not toggle
-            blink = 100
-        else:
-            blink = 1000
-        await asyncio.sleep_ms(blink)
+        vsys_read = measure_vsys()
+        print(f'Sys Voltage: {vsys_read}')
+        await asyncio.sleep_ms(5_000)
 
 
 
@@ -201,7 +205,7 @@ async def main():
  #       asyncio.create_task(remote_task()),
         asyncio.create_task(blink_task()),
         asyncio.create_task(rx_task()),
-        asyncio.create_task(blink_on_read())
+        asyncio.create_task(read_voltage())
     ]
     await asyncio.gather(*tasks)
 
