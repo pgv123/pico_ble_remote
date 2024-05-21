@@ -2,7 +2,9 @@ import sys
 
 import aioble
 import bluetooth
-from machine import ADC, Pin
+from lora_e32 import Logger, LoRaE32, Configuration
+from lora_e32_operation_constant import ResponseStatusCode
+from machine import ADC, Pin, UART
 import uasyncio as asyncio
 from micropython import const
 
@@ -28,6 +30,12 @@ BLE_VERSION_ID = const(0x2A28)
 #button_y = Button(15)
 
 led = Pin("LED", Pin.OUT)
+
+# Initialize the LoRaE32 module
+uart1 = UART(1, baudrate=9600)
+lora = LoRaE32('433T20D', uart1, m0_pin=21, m1_pin=22)
+code = lora.begin()
+print("Initialization: {}", ResponseStatusCode.get_description(code))
 
 _DEVICE_INFO_UUID = bluetooth.UUID(0x180A) # Device Information
 _GENERIC = bluetooth.UUID(0x1848)
@@ -137,19 +145,14 @@ async def rx_task():
             if rx_characteristic != None:
                 try:
                     #command = rx_characteristic(..., capture=True)
-                    print("Trying for something written in RX")
+                    print("Waiting for RX chars...")
                     read_char = False
                     connection, rec_val = await rx_characteristic.written()  #rx_characteristic.write()
-                    print (f"Command: {rec_val}")
+                    Message = rec_val.decode('ascii')
+                    print (f"Received: {Message}")
                     read_char = True
-                    if rec_val == b'a':
-                        print("a button pressed")
-                    elif rec_val == b'b':
-                        print("b button pressed")
-                    elif rec_val == b'x':
-                        print("x button pressed")
-                    elif rec_val == b'y':
-                        print("y button pressed")
+                    code = lora.send_transparent_message(Message)
+                    print(f"Send message: {Message}", ResponseStatusCode.get_description(code))
                     await asyncio.sleep_ms(50)
                     
                         
@@ -176,7 +179,7 @@ async def read_voltage():
     
     toggle = True
     while True:
-        charging = Pin(24, Pin.IN)          # reading GP24 tells us whether or not USB power is connected
+        charging = Pin('WL_GPIO2', Pin.IN)          # reading GP24 tells us whether or not USB power is connected
         conversion_factor = 3 * 3.3 / 65535
 
         full_battery = 4.2                  # these are our reference voltages for a full/empty battery, in volts

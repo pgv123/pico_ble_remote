@@ -8,7 +8,7 @@ import time
 
 
 vsys = ADC(29)                      # reads the system input voltage
-charging = Pin(24, Pin.IN)          # reading GP24 tells us whether or not USB power is connected
+charging = Pin('WL_GPIO2', Pin.IN)          # reading GP24 tells us whether or not USB power is connected
 conversion_factor = 3 * 3.3 / 65535
 
 full_battery = 4.2                  # these are our reference voltages for a full/empty battery, in volts

@@ -8,14 +8,14 @@
 # Note: This code was written and tested using MicroPython on an ESP32 board.
 #       It works with other boards, but you may need to change the UART pins.
 
-import lora_e32     # import Logger, LoRaE32, Configuration
+from lora_e32 import Logger, LoRaE32, Configuration
 from machine import UART
 
 from lora_e32_operation_constant import ResponseStatusCode
 
 logger = Logger(True)
 
-logger = logging.getLogger(__name__)
+#logger = getLogger(__name__)
 
 # Initialize the LoRaE32 module
 uart1 = UART(1, baudrate=9600)
@@ -32,6 +32,6 @@ logger.info("In the Logger","but no useful info here")
 
 # Send a string message (transparent)
 for i in range(100): 
-    message = 'Hello, Peter!'
-    code = lora.send_transparent_message(message)
-    print(f"Send message: {message}", ResponseStatusCode.get_description(code))
+    message = 'Hello, Peter! '
+    code1 = lora.send_transparent_message(message)
+    print(f"Send message: {message}", ResponseStatusCode.get_description(code1))
