@@ -39,19 +39,23 @@ print("Initialization: {}", ResponseStatusCode.get_description(code))
 
 _DEVICE_INFO_UUID = bluetooth.UUID(0x180A) # Device Information
 _GENERIC = bluetooth.UUID(0x1848)
-_BUTTON_UUID = bluetooth.UUID(0x2A6E)
+_BATTERY_UUID = bluetooth.UUID(0x180F)
 _ROBOT = bluetooth.UUID(0x1800)
 
 #this is the generic Nordic Uart Service UUID, it supports two characteristics - TX and RX
 _UART_UUID = bluetooth.UUID("6E400001-B5A3-F393-E0A9-E50E24DCCA9E")
 _TX_UUID = bluetooth.UUID("6E400003-B5A3-F393-E0A9-E50E24DCCA9E")
 _RX_UUID = bluetooth.UUID("6E400002-B5A3-F393-E0A9-E50E24DCCA9E")
+
+#the battery characteristic
+_BATTERY = bluetooth.UUID(0x2A19)
                               
 _BLE_APPEARANCE_GENERIC_REMOTE_CONTROL = const(384)
 
 ADV_INTERVAL_MS = 250_000
 
 device_info = aioble.Service(_DEVICE_INFO_UUID)
+
                               
 connection = None
 
@@ -61,6 +65,7 @@ aioble.Characteristic(device_info, bluetooth.UUID(MODEL_NUMBER_ID), read=True, i
 aioble.Characteristic(device_info, bluetooth.UUID(SERIAL_NUMBER_ID), read=True, initial=uid())
 aioble.Characteristic(device_info, bluetooth.UUID(HARDWARE_REVISION_ID), read=True, initial="1.0") #sys.version)
 aioble.Characteristic(device_info, bluetooth.UUID(BLE_VERSION_ID), read=True, initial="1.0")
+
 
 remote_service = aioble.Service(_GENERIC)
 uart_service = aioble.Service(_UART_UUID)
@@ -79,9 +84,14 @@ rx_characteristic = aioble.Characteristic(
 tx_characteristic = aioble.Characteristic(
     uart_service, _TX_UUID, read=True, notify=True)
 
+#set up the battery service and characteristic
+battery_info = aioble.Service(_BATTERY_UUID)
+
+batt_level = aioble.Characteristic(battery_info, _BATTERY, read=True, notify=True)
+
 print("Registering services")
 
-aioble.register_services(uart_service, device_info)
+aioble.register_services(uart_service, device_info, battery_info)
 
 connected = False
 
@@ -192,6 +202,9 @@ async def read_voltage():
 
 
         print(f'Battery percentage remaining {percentage}')
+        percent = str(int(percentage)).encode('utf-8')
+        print(percent)
+        batt_level.write(percent, send_update=True)
     
         if charging.value() == 1:         # if it's plugged into USB power...
             print("Charging!")
