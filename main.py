@@ -182,6 +182,11 @@ async def rx_task():
                     alive = False
                     return
             await asyncio.sleep_ms(1)
+            
+    # Helper to encode the voltage characteristic encoding (sint16).
+def _encode_voltage(vc):
+    return struct.pack("<h", int(vc))
+
 
 async def read_voltage():
     print ('read voltage started')
