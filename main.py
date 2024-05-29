@@ -7,6 +7,7 @@ from lora_e32_operation_constant import ResponseStatusCode
 from machine import ADC, Pin, UART
 import uasyncio as asyncio
 from micropython import const
+import struct
 
 _FLAG_READ = const(0x0002)
 _FLAG_WRITE_NO_RESPONSE = const(0x0004)
@@ -207,7 +208,7 @@ async def read_voltage():
 
 
         print(f'Battery percentage remaining {percentage}')
-        percent = str(int(percentage)).encode('utf-8')
+        percent = _encode_voltage(percentage)
         print(percent)
         batt_level.write(percent, send_update=True)
     
