@@ -60,9 +60,23 @@ device_info = aioble.Service(_DEVICE_INFO_UUID)
                               
 connection = None
 
+readproj = False
+while (readproj == False):
+    try:
+        f1 = open('project.txt','r')
+        proj_no = f1.read()
+        readproj = True
+    except:              #I think this means there is no such file
+        f1 = open('project.txt','w')
+        f1.write('000000')
+        f1.close()
+    
+
+print (f'Project No: {proj_no}')
+
 # Create Characteristic for device info
 aioble.Characteristic(device_info, bluetooth.UUID(MANUFACTURER_ID), read=True, initial="AusSport")
-aioble.Characteristic(device_info, bluetooth.UUID(MODEL_NUMBER_ID), read=True, initial="1.0")
+proj_characteristic = aioble.Characteristic(device_info, bluetooth.UUID(MODEL_NUMBER_ID), read=True, write=True, notify=True, capture=True, initial=proj_no)
 aioble.Characteristic(device_info, bluetooth.UUID(SERIAL_NUMBER_ID), read=True, initial=uid())
 aioble.Characteristic(device_info, bluetooth.UUID(HARDWARE_REVISION_ID), read=True, initial="1.0") #sys.version)
 aioble.Characteristic(device_info, bluetooth.UUID(BLE_VERSION_ID), read=True, initial="1.0")
@@ -123,7 +137,7 @@ async def peripheral_task():
         connected = False
         async with await aioble.advertise(
             ADV_INTERVAL_MS,
-            name="AusSport Scoreboard",
+            name="AusSport Sboard P" + proj_no,
             appearance=_BLE_APPEARANCE_GENERIC_REMOTE_CONTROL,
             services=[_UART_UUID]
         ) as connection:
@@ -135,6 +149,57 @@ async def peripheral_task():
                 await asyncio.sleep_ms(5_000)   #
             await connection.disconnected()
             print("disconnected")
+
+async def proj_task():
+    global connected, connection
+    print('proj task started')
+    global read_char
+    read_char = False
+    while True:
+        if connected == True:
+           # print("Connected in RX")
+            alive = True
+        else:
+           # print("Not Connected")
+            alive = False
+            await asyncio.sleep_ms(100)
+            continue
+    
+        if alive == True:
+             
+            if proj_characteristic != None:
+                try:
+                    #command = rx_characteristic(..., capture=True)
+                    print("Waiting for any change in Project No...")
+                    read_char = False
+                    connection, rec_val = await proj_characteristic.written()  #rx_characteristic.write()
+                    Project = rec_val.decode('ascii')
+                    print (f"Received New Project: {Project}")
+                    read_char = True
+                    f1 = open('project.txt','w')
+                    f1.write(Project)
+                    f1.close()
+                    await asyncio.sleep_ms(50)
+                    
+                        
+                except TypeError:
+                    print(f'something went wrong; remote disconnected?')
+                    connected = False
+                    alive = False
+                    return
+                except asyncio.TimeoutError:
+                    print(f'something went wrong; timeout error?')
+                    connected = False
+                    alive = False
+                    return
+                except asyncio.GattError:
+                    print(f'something went wrong; Gatt error - did the remote die?')
+                    connected = False
+                    alive = False
+                    return
+            await asyncio.sleep_ms(1)
+
+
 
 async def rx_task():
     global connected, connection
@@ -207,15 +272,14 @@ async def read_voltage():
             percentage = 100.00
 
 
-        print(f'Battery percentage remaining {percentage}')
+#        print(f'Battery percentage remaining {percentage}')
         percent = _encode_voltage(percentage)
-        print(percent)
         batt_level.write(percent, send_update=True)
     
-        if charging.value() == 1:         # if it's plugged into USB power...
-            print("Charging!")
-        else:                             # if not, display the battery stats
-            print(f'Voltage {voltage}')
+ #       if charging.value() == 1:         # if it's plugged into USB power...
+#            print("Charging!")
+#        else:                             # if not, display the battery stats
+#            print(f'Voltage {voltage}')
         await asyncio.sleep_ms(5_000)
 
 
@@ -243,6 +307,7 @@ async def main():
  #       asyncio.create_task(remote_task()),
         asyncio.create_task(blink_task()),
         asyncio.create_task(rx_task()),
+        asyncio.create_task(proj_task()),
         asyncio.create_task(read_voltage())
     ]
     await asyncio.gather(*tasks)
