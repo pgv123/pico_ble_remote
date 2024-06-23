@@ -45,6 +45,8 @@ _ROBOT = bluetooth.UUID(0x1800)
 
 #this is the generic Nordic Uart Service UUID, it supports two characteristics - TX and RX
 _UART_UUID = bluetooth.UUID("6E400001-B5A3-F393-E0A9-E50E24DCCA9E")
+
+#the UART characteristics
 _TX_UUID = bluetooth.UUID("6E400003-B5A3-F393-E0A9-E50E24DCCA9E")
 _RX_UUID = bluetooth.UUID("6E400002-B5A3-F393-E0A9-E50E24DCCA9E")
 
@@ -276,10 +278,10 @@ async def read_voltage():
         percent = _encode_voltage(percentage)
         batt_level.write(percent, send_update=True)
     
- #       if charging.value() == 1:         # if it's plugged into USB power...
-#            print("Charging!")
-#        else:                             # if not, display the battery stats
-#            print(f'Voltage {voltage}')
+        if charging.value() == 1:         # if it's plugged into USB power...
+            print("Charging!")
+        else:                             # if not, display the battery stats
+            print(f'Voltage {voltage}')
         await asyncio.sleep_ms(5_000)
 
 
