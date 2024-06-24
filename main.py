@@ -176,7 +176,9 @@ async def proj_task():
                     read_char = False
                     connection, rec_val = await proj_characteristic.written()  #rx_characteristic.write()
                     Project = rec_val.decode('ascii')
-                    print (f"Received New Project: {Project}")
+                    update_str = "Received New Project: " + Project
+                    print (update_str)
+                    tx_characteristic.write(update_str.encode('ascii'))
                     read_char = True
                     f1 = open('project.txt','w')
                     f1.write(Project)
@@ -230,7 +232,8 @@ async def rx_task():
                     print (f"Received: {Message}")
                     read_char = True
                     code = lora.send_transparent_message(Message)
-                    print(f"Send message: {Message}", ResponseStatusCode.get_description(code))
+                    print(f"Send Radio message: {Message}", ResponseStatusCode.get_description(code))
+                    tx_characteristic.write(Message.encode('ascii', send_update=True))
                     await asyncio.sleep_ms(50)
                     
                         
