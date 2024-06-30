@@ -61,12 +61,12 @@ device_info = aioble.Service(_DEVICE_INFO_UUID)
 
                               
 connection = None
-
+Project = "000000"
 readproj = False
 while (readproj == False):
     try:
         f1 = open('project.txt','r')
-        proj_no = f1.read()
+        Project = f1.read()
         readproj = True
     except:              #I think this means there is no such file
         f1 = open('project.txt','w')
@@ -74,11 +74,11 @@ while (readproj == False):
         f1.close()
     
 
-print (f'Project No: {proj_no}')
+print (f'Project No: {Project}')
 
 # Create Characteristic for device info
 aioble.Characteristic(device_info, bluetooth.UUID(MANUFACTURER_ID), read=True, initial="AusSport")
-proj_characteristic = aioble.Characteristic(device_info, bluetooth.UUID(MODEL_NUMBER_ID), read=True, write=True, notify=True, capture=True, initial=proj_no)
+proj_characteristic = aioble.Characteristic(device_info, bluetooth.UUID(MODEL_NUMBER_ID), read=True, write=True, notify=True, capture=True, initial=Project)
 aioble.Characteristic(device_info, bluetooth.UUID(SERIAL_NUMBER_ID), read=True, initial=uid())
 aioble.Characteristic(device_info, bluetooth.UUID(HARDWARE_REVISION_ID), read=True, initial="1.0") #sys.version)
 aioble.Characteristic(device_info, bluetooth.UUID(BLE_VERSION_ID), read=True, initial="1.0")
@@ -120,26 +120,15 @@ def measure_vsys():
     Pin(29, Pin.ALT, pull=Pin.PULL_DOWN, alt=7)
     return reading
 
-async def remote_task():
-    """ Task to handle remote control """
-    print("remote task started")
-    while True:
-        if not connected:
-            print("Not Connected")
-            await asyncio.sleep_ms(1000)
-            continue
-
-        await asyncio.sleep_ms(100)
-
 async def peripheral_task():
     """ Task to handle peripheral """
     print('peripheral task started')
-    global connected, connection
+    global connected, connection, message, Project
     while True:
         connected = False
         async with await aioble.advertise(
             ADV_INTERVAL_MS,
-            name="AusSport Sboard P" + proj_no,
+            name="AusSport Sboard P" + Project,
             appearance=_BLE_APPEARANCE_GENERIC_REMOTE_CONTROL,
             services=[_UART_UUID]
         ) as connection:
@@ -147,13 +136,15 @@ async def peripheral_task():
             connected = True
             print("connected")
             while connection.is_connected():
-                tx_characteristic.notify(connection)    #keep the connection open by sending a notify every 5 secs
+                message = "AusSport P" + Project
+                tx_characteristic.write(message.encode('ascii'),send_update=True)
+ #               tx_characteristic.notify(connection)    #keep the connection open by sending a notify every 5 secs
                 await asyncio.sleep_ms(5_000)   #
             await connection.disconnected()
             print("disconnected")
 
 async def proj_task():
-    global connected, connection
+    global connected, connection, Project
     print('proj task started')
     global read_char
     read_char = False
@@ -178,7 +169,7 @@ async def proj_task():
                     Project = rec_val.decode('ascii')
                     update_str = "Received New Project: " + Project
                     print (update_str)
-                    tx_characteristic.write(update_str.encode('ascii'))
+                    tx_characteristic.write(update_str.encode('ascii'), send_update=True)
                     read_char = True
                     f1 = open('project.txt','w')
                     f1.write(Project)
@@ -233,7 +224,7 @@ async def rx_task():
                     read_char = True
                     code = lora.send_transparent_message(Message)
                     print(f"Send Radio message: {Message}", ResponseStatusCode.get_description(code))
-                    tx_characteristic.write(Message.encode('ascii', send_update=True))
+                    tx_characteristic.write(Message.encode('ascii'), send_update=True)
                     await asyncio.sleep_ms(50)
                     
                         
