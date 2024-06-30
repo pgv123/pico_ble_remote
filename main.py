@@ -94,11 +94,12 @@ while (readproj == False):
 
 print (f'Project No: {Project}')
 
-proj_characteristic = aioble.Characteristic(project_info, _PROJ_NUM_UUID, read=True, write=True, initial=Project)
+proj_characteristic = aioble.Characteristic(project_info, _PROJ_NUM_UUID, read=True, write=True, capture=True, initial=Project)
 
+print (f'Project Char: {proj_characteristic}')
 # Create Characteristic for device info
 aioble.Characteristic(device_info, bluetooth.UUID(MANUFACTURER_ID), read=True, initial=Company)
-proj_characteristic = aioble.Characteristic(device_info, bluetooth.UUID(MODEL_NUMBER_ID), read=True, initial=Model)
+aioble.Characteristic(device_info, bluetooth.UUID(MODEL_NUMBER_ID), read=True, initial=Model)
 aioble.Characteristic(device_info, bluetooth.UUID(SERIAL_NUMBER_ID), read=True, initial=uid())
 aioble.Characteristic(device_info, bluetooth.UUID(HARDWARE_REVISION_ID), read=True, initial=Hardware) #sys.version)
 aioble.Characteristic(device_info, bluetooth.UUID(BLE_VERSION_ID), read=True, initial=Software)
