@@ -14,10 +14,16 @@ _FLAG_WRITE_NO_RESPONSE = const(0x0004)
 _FLAG_WRITE = const(0x0008)
 _FLAG_NOTIFY = const(0x0010)
 
+#Device Information
+Company = "AusSport" # Limited Chars
+Model = "Pico BLE" # to LORA Interface"
 def uid():
     """ Return the unique id of the device as a string """
     return "{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}".format(
         *machine.unique_id())
+Hardware = "1.0"
+Software = "1.0.0.1"
+
 
 MANUFACTURER_ID = const(0x02A29)
 MODEL_NUMBER_ID = const(0x2A24)
@@ -43,6 +49,11 @@ _GENERIC = bluetooth.UUID(0x1848)
 _BATTERY_UUID = bluetooth.UUID(0x180F)
 _ROBOT = bluetooth.UUID(0x1800)
 
+#the Project Service and Characteristic
+_PROJECT_UUID = bluetooth.UUID("116459e5-ad1a-4d85-9b9d-fc2e6cd6b3e0")
+
+_PROJ_NUM_UUID = bluetooth.UUID("116459e6-ad1a-4d85-9b9d-fc2e6cd6b3e0")
+
 #this is the generic Nordic Uart Service UUID, it supports two characteristics - TX and RX
 _UART_UUID = bluetooth.UUID("6E400001-B5A3-F393-E0A9-E50E24DCCA9E")
 
@@ -59,9 +70,16 @@ ADV_INTERVAL_MS = 250_000
 
 device_info = aioble.Service(_DEVICE_INFO_UUID)
 
+project_info = aioble.Service(_PROJECT_UUID)
+
+
+
                               
 connection = None
+
 Project = "000000"
+
+
 readproj = False
 while (readproj == False):
     try:
@@ -76,12 +94,14 @@ while (readproj == False):
 
 print (f'Project No: {Project}')
 
+proj_characteristic = aioble.Characteristic(project_info, _PROJ_NUM_UUID, read=True, write=True, initial=Project)
+
 # Create Characteristic for device info
-aioble.Characteristic(device_info, bluetooth.UUID(MANUFACTURER_ID), read=True, initial="AusSport")
-proj_characteristic = aioble.Characteristic(device_info, bluetooth.UUID(MODEL_NUMBER_ID), read=True, write=True, notify=True, capture=True, initial=Project)
+aioble.Characteristic(device_info, bluetooth.UUID(MANUFACTURER_ID), read=True, initial=Company)
+proj_characteristic = aioble.Characteristic(device_info, bluetooth.UUID(MODEL_NUMBER_ID), read=True, initial=Model)
 aioble.Characteristic(device_info, bluetooth.UUID(SERIAL_NUMBER_ID), read=True, initial=uid())
-aioble.Characteristic(device_info, bluetooth.UUID(HARDWARE_REVISION_ID), read=True, initial="1.0") #sys.version)
-aioble.Characteristic(device_info, bluetooth.UUID(BLE_VERSION_ID), read=True, initial="1.0")
+aioble.Characteristic(device_info, bluetooth.UUID(HARDWARE_REVISION_ID), read=True, initial=Hardware) #sys.version)
+aioble.Characteristic(device_info, bluetooth.UUID(BLE_VERSION_ID), read=True, initial=Software)
 
 
 remote_service = aioble.Service(_GENERIC)
@@ -108,7 +128,7 @@ batt_level = aioble.Characteristic(battery_info, _BATTERY, read=True, notify=Tru
 
 print("Registering services")
 
-aioble.register_services(uart_service, device_info, battery_info)
+aioble.register_services(uart_service, device_info, project_info, battery_info)
 
 connected = False
 
@@ -300,7 +320,6 @@ async def main():
 
     tasks = [
         asyncio.create_task(peripheral_task()),
- #       asyncio.create_task(remote_task()),
         asyncio.create_task(blink_task()),
         asyncio.create_task(rx_task()),
         asyncio.create_task(proj_task()),
