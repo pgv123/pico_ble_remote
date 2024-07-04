@@ -53,6 +53,7 @@ _ROBOT = bluetooth.UUID(0x1800)
 _PROJECT_UUID = bluetooth.UUID("116459e5-ad1a-4d85-9b9d-fc2e6cd6b3e0")
 
 _PROJ_NUM_UUID = bluetooth.UUID("116459e6-ad1a-4d85-9b9d-fc2e6cd6b3e0")
+_PROJ_KEEPALIVE_UUID = bluetooth.UUID("116459e7-ad1a-4d85-9b9d-fc2e6cd6b3e0")
 
 #this is the generic Nordic Uart Service UUID, it supports two characteristics - TX and RX
 _UART_UUID = bluetooth.UUID("6E400001-B5A3-F393-E0A9-E50E24DCCA9E")
@@ -95,6 +96,7 @@ while (readproj == False):
 print (f'Project No: {Project}')
 
 proj_characteristic = aioble.Characteristic(project_info, _PROJ_NUM_UUID, read=True, write=True, capture=True, initial=Project)
+keepalive_characteristic = aioble.Characteristic(project_info, _PROJ_KEEPALIVE_UUID, write=True, initial=0)
 
 print (f'Project Char: {proj_characteristic}')
 # Create Characteristic for device info
@@ -159,16 +161,16 @@ async def peripheral_task():
             while connection.is_connected():
                 message = "AusSport P" + Project
                 tx_characteristic.write(message.encode('ascii'),send_update=True)
- #               tx_characteristic.notify(connection)    #keep the connection open by sending a notify every 5 secs
                 await asyncio.sleep_ms(5_000)   #
             await connection.disconnected()
             print("disconnected")
 
 async def proj_task():
-    global connected, connection, Project
+    global connected, connection, Project, count
     print('proj task started')
     global read_char
     read_char = False
+    count = 0
     while True:
         if connected == True:
            # print("Connected in RX")
@@ -176,11 +178,28 @@ async def proj_task():
         else:
            # print("Not Connected")
             alive = False
+            count = 0
             await asyncio.sleep_ms(100)
             continue
     
         if alive == True:
              
+            if keepalive_characteristic != None:
+                try:
+                    print("Waiting for Keep Alive...")
+                    if count > COUNT_MAX:
+                        print("It's dead at the other end!")
+                        connected = False
+                        alive = False
+                    else:
+                        connection, keepalive = await keepalive_characteristic.written()
+                        if keepalive == 1:
+                            count = 0       #go back to the start...it's alive!
+                        await asyncio.sleep_ms(5000)
+                        
+
+
+
             if proj_characteristic != None:
                 try:
                     #command = rx_characteristic(..., capture=True)
