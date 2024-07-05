@@ -96,9 +96,10 @@ while (readproj == False):
 print (f'Project No: {Project}')
 
 proj_characteristic = aioble.Characteristic(project_info, _PROJ_NUM_UUID, read=True, write=True, capture=True, initial=Project)
-keepalive_characteristic = aioble.Characteristic(project_info, _PROJ_KEEPALIVE_UUID, write=True, initial=0)
+keepalive_characteristic = aioble.Characteristic(project_info, _PROJ_KEEPALIVE_UUID, write=True, capture=True, initial="Not OK")
 
 print (f'Project Char: {proj_characteristic}')
+print (f'Keep Alive Char: {proj_characteristic}')
 # Create Characteristic for device info
 aioble.Characteristic(device_info, bluetooth.UUID(MANUFACTURER_ID), read=True, initial=Company)
 aioble.Characteristic(device_info, bluetooth.UUID(MODEL_NUMBER_ID), read=True, initial=Model)
@@ -133,6 +134,7 @@ print("Registering services")
 
 aioble.register_services(uart_service, device_info, project_info, battery_info)
 
+print("Out of Registering services")
 connected = False
 
 def measure_vsys():
@@ -146,7 +148,7 @@ def measure_vsys():
 async def peripheral_task():
     """ Task to handle peripheral """
     print('peripheral task started')
-    global connected, connection, message, Project
+    global connected, connection, message, Project, count
     while True:
         connected = False
         async with await aioble.advertise(
@@ -159,15 +161,21 @@ async def peripheral_task():
             connected = True
             print("connected")
             while connection.is_connected():
-                message = "AusSport P" + Project
-                tx_characteristic.write(message.encode('ascii'),send_update=True)
-                await asyncio.sleep_ms(5_000)   #
+                count = +1
+                if count > 3: #COUNT_MAX:
+                    print("It's dead or it's not GameChanger at the other end!")
+                    connected = False
+                    alive = False
+                else:                 
+                    message = "AusSport P" + Project
+                    tx_characteristic.write(message.encode('ascii'),send_update=True)
+                    await asyncio.sleep_ms(5_000)   #
             await connection.disconnected()
             print("disconnected")
 
-async def proj_task():
-    global connected, connection, Project, count
-    print('proj task started')
+async def keepalive_task():
+    global connected, connection, count
+    print('keep alive task started')
     global read_char
     read_char = False
     count = 0
@@ -187,19 +195,46 @@ async def proj_task():
             if keepalive_characteristic != None:
                 try:
                     print("Waiting for Keep Alive...")
-                    if count > COUNT_MAX:
-                        print("It's dead at the other end!")
-                        connected = False
-                        alive = False
-                    else:
-                        connection, keepalive = await keepalive_characteristic.written()
-                        if keepalive == 1:
-                            count = 0       #go back to the start...it's alive!
-                        await asyncio.sleep_ms(5000)
+                    connection, keepalive = await keepalive_characteristic.written()
+                    ret_char = keepalive.decode('ascii')
+                    if keepalive.decode('ascii') == "OK":
+                        count = 0       #go back to the start...it's alive!
+                    await asyncio.sleep_ms(5000)
                         
+                except TypeError:
+                    print(f'something went wrong; remote disconnected?')
+                    connected = False
+                    alive = False
+                    return
+                except asyncio.TimeoutError:
+                    print(f'something went wrong; timeout error?')
+                    connected = False
+                    alive = False
+                    return
+                except asyncio.GattError:
+                    print(f'something went wrong; Gatt error - did the remote die?')
+                    connected = False
+                    alive = False
+                    return
 
 
-
+async def proj_task():
+    global connected, connection, Project
+    print('proj task started')
+    global read_char
+    read_char = False
+    while True:
+        if connected == True:
+           # print("Connected in RX")
+            alive = True
+        else:
+           # print("Not Connected")
+            alive = False
+            await asyncio.sleep_ms(100)
+            continue
+    
+        if alive == True:
+             
             if proj_characteristic != None:
                 try:
                     #command = rx_characteristic(..., capture=True)
@@ -343,6 +378,7 @@ async def main():
         asyncio.create_task(blink_task()),
         asyncio.create_task(rx_task()),
         asyncio.create_task(proj_task()),
+        asyncio.create_task(keepalive_task()),        
         asyncio.create_task(read_voltage())
     ]
     await asyncio.gather(*tasks)
