@@ -156,7 +156,7 @@ async def peripheral_task():
             ADV_INTERVAL_MS,
             name="AusSport Sboard P" + Project,
             appearance=_BLE_APPEARANCE_GENERIC_REMOTE_CONTROL,
-            services=[_UART_UUID]
+            services=[_UART_UUID] #_BATTERY_UUID, _DEVICE_INFO_UUID, _PROJECT_UUID] can't use these as goes over length
         ) as connection:
             print("Connection from, ", connection.device)
             connected = True
@@ -177,6 +177,7 @@ async def peripheral_task():
                         tx_characteristic.write(message.encode('ascii'),send_update=True)
                         await asyncio.sleep_ms(5_000)
                 else:
+                    print("Disconnected")
                     connected = None  #
             #await (not connected)
                     print("disconnected or dead")
@@ -184,8 +185,7 @@ async def peripheral_task():
 async def keepalive_task():
     global connected, connection, count
     print('keep alive task started')
-    global read_char
-    read_char = False
+
     count = 0
     while True:
         if connected == True:
@@ -205,8 +205,9 @@ async def keepalive_task():
                     print("Waiting for Keep Alive...")
                     connection, keepalive = await keepalive_characteristic.written()
                     ret_char = keepalive.decode('ascii')
-                    if keepalive.decode('ascii') == "OK":
+                    if ret_char == "OK":
                         count = 0       #go back to the start...it's alive!
+                        print(ret_char)
                     await asyncio.sleep_ms(5000)
                         
                 except TypeError:
