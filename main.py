@@ -122,8 +122,8 @@ connection = None
 async def peripheral_task():
     print('peripheral task started')
     global connected, connection, message, Project, count
-    while True:
-        connected = False
+    connected = False
+    while not connected:
         count = 0
         async with await aioble.advertise(
             ADV_INTERVAL_MS,
@@ -136,23 +136,22 @@ async def peripheral_task():
             print("connected")
             
             while connected:
-                if connection.is_connected():
+                while connection.is_connected():
                     count += 1
                     if count > 10 : #COUNT_MAX:
                         print("It's dead or it's not GameChanger at the other end!")
-                        connection = None
                         connected = False
                         count = 0 #reset for the next connection
+                        break
                     else:                 
                         message = "AusSport P" + Project
                         print("count: ",count)
                         tx_characteristic.write(message.encode('ascii'),send_update=True)
                         await asyncio.sleep_ms(5_000)
-                else:
-                    print("Disconnected")
-                    connected = False
-            #await (not connected)
-                print("disconnected or dead")
+
+            print("disconnected or dead")
+            count = 0
+            break
 
 async def keepalive_task():
     global connected, connection, count
