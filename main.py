@@ -1,7 +1,7 @@
 import sys
 import aioble
 import bluetooth
-from lora_e32 import Logger, LoRaE32, Configuration
+from lora_e32 import Logger, LoRaE32, print_configuration, Configuration
 from lora_e32_operation_constant import ResponseStatusCode
 from machine import ADC, Pin, UART
 import uasyncio as asyncio
@@ -67,6 +67,8 @@ uart1 = UART(1, baudrate=9600)
 lora = LoRaE32('433T20D', uart1, m0_pin=6, m1_pin=7)
 code = lora.begin()
 print("Initialization: {}", ResponseStatusCode.get_description(code))
+code, configuration = lora.get_configuration()
+print("Address H:", configuration.ADDH, " L:",configuration.ADDL," Channel: ",configuration.CHAN)
 
 #Functions
 
@@ -245,11 +247,20 @@ async def rx_task():
                 try:
                     print("Waiting for RX chars...")
                     connection, rec_val = await rx_characteristic.written()  #rx_characteristic.write()
-                    Message = rec_val.decode('ascii')
-                    print (f"Received: {Message}")
-                    code = lora.send_transparent_message(Message)
-                    print(f"Send Radio message: {Message}", ResponseStatusCode.get_description(code))
-                    tx_characteristic.write(Message.encode('ascii'), send_update=True)
+                    RawMessage = rec_val.decode('ascii')
+                    print (f"Received: {RawMessage}")
+                    FirstChar = RawMessage[0]
+                    Message = RawMessage[1:]
+                    if FirstChar == "T":
+                        code = lora.send_transparent_message(Message)
+                        print(f"Send Radio message: {Message}", ResponseStatusCode.get_description(code))
+                        tx_characteristic.write(Message.encode('ascii'), send_update=True)
+                    elif FirstChar == "R":
+                        #code, configuration = lora.get_configuration()
+                        print_configuration(configuration)
+                    elif FirstChar == "C":
+                        configuration.CHAN = int(Message)
+                        print_configuration(configuration)
                     await asyncio.sleep_ms(50)
                     
                 except (TypeError, asyncio.TimeoutError, asyncio.GattError):
