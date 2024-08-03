@@ -40,22 +40,31 @@ _PROJECT_UUID = bluetooth.UUID("116459e5-ad1a-4d85-9b9d-fc2e6cd6b3e0")
 #the Project Characteristics
 _PROJ_NUM_UUID = bluetooth.UUID("116459e6-ad1a-4d85-9b9d-fc2e6cd6b3e0")
 _PROJ_KEEPALIVE_UUID = bluetooth.UUID("116459e7-ad1a-4d85-9b9d-fc2e6cd6b3e0")
+
 #this is the generic Nordic Uart Service UUID
-_UART_UUID = bluetooth.UUID("6E400001-B5A3-F393-E0A9-E50E24DCCA9E")
+#_UART_UUID = bluetooth.UUID("6E400001-B5A3-F393-E0A9-E50E24DCCA9E")
 #the UART characteristics
-_TX_UUID = bluetooth.UUID("6E400003-B5A3-F393-E0A9-E50E24DCCA9E")
-_RX_UUID = bluetooth.UUID("6E400002-B5A3-F393-E0A9-E50E24DCCA9E")
+#_TX_UUID = bluetooth.UUID("6E400003-B5A3-F393-E0A9-E50E24DCCA9E")
+#_RX_UUID = bluetooth.UUID("6E400002-B5A3-F393-E0A9-E50E24DCCA9E")
+
+#purely for testing
+_UART_UUID = bluetooth.UUID("5f908c2c-a6aa-4423-acb0-b260943a4275")
+#the UART characteristics
+_TX_UUID = bluetooth.UUID("5f908c2d-a6aa-4423-acb0-b260943a4275")
+_RX_UUID = bluetooth.UUID("5f908c2e-a6aa-4423-acb0-b260943a4275")
+
 
 _BLE_APPEARANCE_GENERIC_REMOTE_CONTROL = const(384)
 
 ADV_INTERVAL_MS = 250_000
 
 
-led = Pin("LED", Pin.OUT)
-
+#led = Pin("LED", Pin.OUT)
+led = Pin(19, Pin.OUT)
 # Initialize the LoRaE32 module
 uart1 = UART(1, baudrate=9600)
-lora = LoRaE32('433T20D', uart1, m0_pin=21, m1_pin=22)
+#lora = LoRaE32('433T20D', uart1, m0_pin=21, m1_pin=22)
+lora = LoRaE32('433T20D', uart1, m0_pin=6, m1_pin=7)
 code = lora.begin()
 print("Initialization: {}", ResponseStatusCode.get_description(code))
 
@@ -101,8 +110,8 @@ battery_info = aioble.Service(_BATTERY_UUID)
 
 proj_characteristic = aioble.Characteristic(project_info, _PROJ_NUM_UUID, read=True, write=True, capture=True, initial=Project)
 keepalive_characteristic = aioble.Characteristic(project_info, _PROJ_KEEPALIVE_UUID, write=True, capture=True, initial="Not OK")
-tx_characteristic = aioble.Characteristic(uart_service, _TX_UUID, read=True, notify=True)
-rx_characteristic = aioble.Characteristic(uart_service, _RX_UUID, write=True, notify=True, capture=True)
+rx_characteristic = aioble.Characteristic(uart_service, _RX_UUID, write=True, write_no_response=True, capture=True, initial="Test") #this is the sending to LORA characteristic so GameChanger has to write to it
+tx_characteristic = aioble.Characteristic(uart_service, _TX_UUID, read=True, notify=True) #this is the receiving from LORA characteristic so GameChanger has to read from it
 batt_level = aioble.Characteristic(battery_info, _BATTERY, read=True, notify=True)
 
 aioble.Characteristic(device_info, bluetooth.UUID(MANUFACTURER_ID), read=True, initial=Company)
@@ -124,6 +133,7 @@ async def peripheral_task():
     global connected, connection, message, Project, count
     connected = False
     while not connected:
+        print('Commence advertising!')
         count = 0
         async with await aioble.advertise(
             ADV_INTERVAL_MS,
@@ -137,11 +147,14 @@ async def peripheral_task():
             
             while connected:
                 while connection.is_connected():
-                    count += 1
+                    #count += 1
                     if count > 10 : #COUNT_MAX:
                         print("It's dead or it's not GameChanger at the other end!")
                         connected = False
                         count = 0 #reset for the next connection
+ 
+                        connection = None
+
                         break
                     else:                 
                         message = "AusSport P" + Project
@@ -149,8 +162,11 @@ async def peripheral_task():
                         tx_characteristic.write(message.encode('ascii'),send_update=True)
                         await asyncio.sleep_ms(5_000)
 
-            print("disconnected or dead")
-            count = 0
+                print("disconnected or dead")
+                count = 0
+                connected = False
+                connection = None
+                machine.reset()
             break
 
 async def keepalive_task():
@@ -283,6 +299,7 @@ async def main():
         asyncio.create_task(keepalive_task()),        
         asyncio.create_task(read_voltage())
     ]
+
     await asyncio.gather(*tasks)
 
 asyncio.run(main())
