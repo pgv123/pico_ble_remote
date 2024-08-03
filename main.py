@@ -259,8 +259,27 @@ async def rx_task():
                         #code, configuration = lora.get_configuration()
                         print_configuration(configuration)
                     elif FirstChar == "C":
-                        configuration.CHAN = int(Message)
-                        print_configuration(configuration)
+                        cH = int(Message)
+                        if cH >= 0 and cH < 32:
+                            configuration.CHAN = int(Message)
+                            print_configuration(configuration)
+                        else:
+                            print("Invalid Channel: ", Message)
+                    elif FirstChar == "A":
+                        L_Mess = Message.split(",")
+                        aH = int(L_Mess[0])
+                        aL = int(L_Mess[1])
+                        if aH >= 0 and aH < 256 and aL >= 0 and aL < 256:
+                            configuration.ADDH = int(L_Mess[0])
+                            configuration.ADDL = int(L_Mess[1])
+                            print_configuration(configuration)
+                        else:
+                            print("Invalid Values for Address: ", Message)
+                    elif FirstChar == "P":
+                            code, confSetted = lora.set_configuration(configuration)
+                            print("Programming New Config! ", ResponseStatusCode.get_description(code))
+                            print_configuration(configuration)
+                            print_configuration(confSetted)                              
                     await asyncio.sleep_ms(50)
                     
                 except (TypeError, asyncio.TimeoutError, asyncio.GattError):
