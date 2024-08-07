@@ -58,13 +58,16 @@ _BLE_APPEARANCE_GENERIC_REMOTE_CONTROL = const(384)
 
 ADV_INTERVAL_MS = 250_000
 
+#logging = Logger(False)
+
+#logger = logging.getLogger(__name__)
 
 #led = Pin("LED", Pin.OUT)
 led = Pin(19, Pin.OUT)
 # Initialize the LoRaE32 module
 uart1 = UART(1, baudrate=9600)
 #lora = LoRaE32('433T20D', uart1, m0_pin=21, m1_pin=22)
-lora = LoRaE32('433T20D', uart1, m0_pin=6, m1_pin=7)
+lora = LoRaE32('433T20D', uart1, aux_pin=3, m0_pin=6, m1_pin=7)
 code = lora.begin()
 print("Initialization: {}", ResponseStatusCode.get_description(code))
 code, configuration = lora.get_configuration()
@@ -280,7 +283,7 @@ async def rx_task():
                             print("Programming New Config! ", ResponseStatusCode.get_description(code))
                             print_configuration(configuration)
                             print_configuration(confSetted)                              
-                    await asyncio.sleep_ms(50)
+                    #await asyncio.sleep_ms(50)
                     
                 except (TypeError, asyncio.TimeoutError, asyncio.GattError):
                     print(f'something went wrong; remote disconnected?')

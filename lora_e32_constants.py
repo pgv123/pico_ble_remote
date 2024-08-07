@@ -20,11 +20,6 @@ class Logger:
         return Logger(self.enable_debug)
 
 
-logging = Logger(True)
-
-logger = logging.getLogger(__name__)
-
-
 class UARTParity:
     MODE_00_8N1 = 0b00
     MODE_01_8O1 = 0b01
