@@ -58,9 +58,7 @@ _BLE_APPEARANCE_GENERIC_REMOTE_CONTROL = const(384)
 
 ADV_INTERVAL_MS = 250_000
 
-#logging = Logger(False)
 
-#logger = logging.getLogger(__name__)
 
 #led = Pin("LED", Pin.OUT)
 led = Pin(19, Pin.OUT)
@@ -185,7 +183,7 @@ async def keepalive_task():
         else:
             alive = False
             count = 0
-            await asyncio.sleep_ms(100)
+            await asyncio.sleep_ms(1000)
             continue
     
         if alive:        
@@ -212,7 +210,7 @@ async def proj_task():
             alive = True
         else:
             alive = False
-            await asyncio.sleep_ms(100)
+            await asyncio.sleep_ms(1000)
             continue
     
         if alive:
@@ -242,7 +240,7 @@ async def rx_task():
             alive = True
         else:
             alive = False
-            await asyncio.sleep_ms(100)
+            await asyncio.sleep_ms(1000)
             continue
     
         if alive:             
@@ -318,9 +316,14 @@ async def blink_task():
     global connected
     toggle = True
     while True:
-        led.value(toggle)
         toggle = not toggle
-        blink = 1000 if connected else 250
+        blink = 10000 if connected else 2500
+        if toggle:
+            led.value(1)
+            await asyncio.sleep_ms(5)
+            led.value(0)
+        else:
+            led.value(0)
         await asyncio.sleep_ms(blink)
 
 async def main():

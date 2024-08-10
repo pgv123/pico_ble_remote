@@ -76,7 +76,9 @@ class Logger:
         self.name = name
         return Logger(self.enable_debug)
 
+logging = Logger(True)
 
+logger = logging.getLogger(__name__)
 
 
 BROADCAST_ADDRESS = 0xFF
