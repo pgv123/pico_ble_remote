@@ -317,13 +317,10 @@ async def blink_task():
     toggle = True
     while True:
         toggle = not toggle
-        blink = 10000 if connected else 2500
-        if toggle:
-            led.value(1)
-            await asyncio.sleep_ms(5)
-            led.value(0)
-        else:
-            led.value(0)
+        blink = 1500 if connected else 350
+        led.value(toggle)
+        await asyncio.sleep_ms(8)
+        led.value(0)
         await asyncio.sleep_ms(blink)
 
 async def main():
