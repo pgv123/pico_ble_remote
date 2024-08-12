@@ -64,7 +64,7 @@ ADV_INTERVAL_MS = 250_000
 led = Pin(19, Pin.OUT)
 # Initialize the LoRaE32 module
 uart1 = UART(1, baudrate=9600)
-#lora = LoRaE32('433T20D', uart1, m0_pin=21, m1_pin=22)
+
 lora = LoRaE32('433T20D', uart1, aux_pin=3, m0_pin=6, m1_pin=7)
 code = lora.begin()
 print("Initialization: {}", ResponseStatusCode.get_description(code))
@@ -257,7 +257,7 @@ async def rx_task():
                         print(f"Send Radio message: {Message}", ResponseStatusCode.get_description(code))
                         tx_characteristic.write(Message.encode('ascii'), send_update=True)
                     elif FirstChar == "R":
-                        #code, configuration = lora.get_configuration()
+                        code, configuration = lora.get_configuration()
                         print_configuration(configuration)
                     elif FirstChar == "C":
                         cH = int(Message)
