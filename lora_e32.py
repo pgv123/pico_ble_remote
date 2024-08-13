@@ -391,7 +391,7 @@ class LoRaE32:
             self.managed_delay(wait_no_aux)
             logger.debug("Wait no AUX pin!")
 
-        self.managed_delay(20)
+        self.managed_delay(5)
         logger.debug("Complete!")
         return result
 

@@ -8,6 +8,7 @@ import uasyncio as asyncio
 from micropython import const
 import struct
 
+
 #Costants and flags
 _FLAG_READ = const(0x0002)
 _FLAG_WRITE_NO_RESPONSE = const(0x0004)
@@ -126,6 +127,8 @@ aioble.Characteristic(device_info, bluetooth.UUID(BLE_VERSION_ID), read=True, in
 #Register services
 aioble.register_services(uart_service, device_info, project_info, battery_info)
 
+rx_characteristic.write("AusSport Scoreboards Messaging via BLE and Android Tablet")
+
 #Global Variables
 connected = False
 connection = None
@@ -146,30 +149,10 @@ async def peripheral_task():
         ) as connection:
             print("Connection from, ", connection.device)
             connected = True
-            print("connected")
-            
-            while connected:
-                while connection.is_connected():
-                    #count += 1
-                    if count > 10 : #COUNT_MAX:
-                        print("It's dead or it's not GameChanger at the other end!")
-                        connected = False
-                        count = 0 #reset for the next connection
- 
-                        connection = None
-
-                        break
-                    else:                 
-                        message = "AusSport P" + Project
-                        print("count: ",count)
-                        tx_characteristic.write(message.encode('ascii'),send_update=True)
-                        await asyncio.sleep_ms(5_000)
-
-                print("disconnected or dead")
-                count = 0
-                connected = False
-                connection = None
-                machine.reset()
+            print("connected")          
+            await connection.disconnected()
+            print(f'disconnected')
+                #machine.reset()
             break
 
 async def keepalive_task():
@@ -249,12 +232,14 @@ async def rx_task():
                     print("Waiting for RX chars...")
                     connection, rec_val = await rx_characteristic.written()  #rx_characteristic.write()
                     RawMessage = rec_val.decode('ascii')
-                    print (f"Received: {RawMessage}")
-                    FirstChar = RawMessage[0]
+                    print (f"Received: {repr(RawMessage)}")
+                    FirstChar = RawMessage[0]            
                     Message = RawMessage[1:]
+                    print (f"First Char: {repr(FirstChar)}, Message: {repr(Message)}")
                     if FirstChar == "T":
+                        print ("inside T")
                         code = lora.send_transparent_message(Message)
-                        print(f"Send Radio message: {Message}", ResponseStatusCode.get_description(code))
+                        print(f"Send Radio message: {repr(Message)}", ResponseStatusCode.get_description(code))
                         tx_characteristic.write(Message.encode('ascii'), send_update=True)
                     elif FirstChar == "R":
                         code, configuration = lora.get_configuration()
@@ -280,7 +265,9 @@ async def rx_task():
                             code, confSetted = lora.set_configuration(configuration)
                             print("Programming New Config! ", ResponseStatusCode.get_description(code))
                             print_configuration(configuration)
-                            print_configuration(confSetted)                              
+                            print_configuration(confSetted)
+                    else:
+                        print("Got Rubbish!...ignoring this: ", Message)                              
                     #await asyncio.sleep_ms(50)
                     
                 except (TypeError, asyncio.TimeoutError, asyncio.GattError):
