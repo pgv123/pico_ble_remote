@@ -126,8 +126,8 @@ aioble.Characteristic(device_info, bluetooth.UUID(BLE_VERSION_ID), read=True, in
 
 #Register services
 aioble.register_services(uart_service, device_info, project_info, battery_info)
-
-rx_characteristic.write("AusSport Scoreboards Messaging via BLE and Android Tablet")
+#By writing a dummy value the buffer for that characteristic is set to the number of characters now set to 60
+rx_characteristic.write("AusSport Scoreboards Messaging via BLE and Android Tablet   ")
 
 #Global Variables
 connected = False
