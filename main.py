@@ -1,5 +1,6 @@
 import sys
 import aioble
+#from libs.peripheral import advertise
 import bluetooth
 from lora_e32 import Logger, LoRaE32, print_configuration, Configuration
 from lora_e32_operation_constant import ResponseStatusCode
@@ -59,7 +60,7 @@ _BLE_APPEARANCE_GENERIC_REMOTE_CONTROL = const(384)
 
 ADV_INTERVAL_MS = 250_000
 
-
+MAX_COUNT = 6
 
 #led = Pin("LED", Pin.OUT)
 led = Pin(19, Pin.OUT)
@@ -113,7 +114,7 @@ uart_service = aioble.Service(_UART_UUID)
 battery_info = aioble.Service(_BATTERY_UUID)
 
 proj_characteristic = aioble.Characteristic(project_info, _PROJ_NUM_UUID, read=True, write=True, capture=True, initial=Project)
-keepalive_characteristic = aioble.Characteristic(project_info, _PROJ_KEEPALIVE_UUID, write=True, capture=True, initial="Not OK")
+keepalive_characteristic = aioble.Characteristic(project_info, _PROJ_KEEPALIVE_UUID, write=True, write_no_response=True, capture=True, initial="Not OK")
 rx_characteristic = aioble.Characteristic(uart_service, _RX_UUID, write=True, write_no_response=True, capture=True, initial="Test") #this is the sending to LORA characteristic so GameChanger has to write to it
 tx_characteristic = aioble.Characteristic(uart_service, _TX_UUID, read=True, notify=True) #this is the receiving from LORA characteristic so GameChanger has to read from it
 batt_level = aioble.Characteristic(battery_info, _BATTERY, read=True, notify=True)
@@ -150,10 +151,16 @@ async def peripheral_task():
             print("Connection from, ", connection.device)
             connected = True
             print("connected")          
-            await connection.disconnected()
-            print(f'disconnected')
+            #await connection.disconnected(timeout_ms=None)
+            while (connection.is_connected() and count <= MAX_COUNT):
+                print('*')
+                count = count + 1
+                await asyncio.sleep_ms(1000)
+            else:
+                print(f'disconnected with count: {count}')
                 #machine.reset()
-            break
+                connected = False
+                connection = None
 
 async def keepalive_task():
     global connected, connection, count
@@ -178,6 +185,8 @@ async def keepalive_task():
                     if ret_char == "OK":
                         count = 0       #go back to the start...it's alive!
                         print(ret_char)
+                        ret_char = ''
+                        keepalive_characteristic.write(ret_char.encode('ascii'))
                     await asyncio.sleep_ms(5000)
                         
                 except (TypeError, asyncio.TimeoutError, asyncio.GattError):
