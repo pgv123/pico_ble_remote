@@ -115,7 +115,7 @@ battery_info = aioble.Service(_BATTERY_UUID)
 
 proj_characteristic = aioble.Characteristic(project_info, _PROJ_NUM_UUID, read=True, write=True, capture=True, initial=Project)
 keepalive_characteristic = aioble.Characteristic(project_info, _PROJ_KEEPALIVE_UUID, write=True, write_no_response=True, capture=True, initial="Not OK")
-rx_characteristic = aioble.Characteristic(uart_service, _RX_UUID, write=True, write_no_response=True, capture=True, initial="Test") #this is the sending to LORA characteristic so GameChanger has to write to it
+rx_characteristic = aioble.Characteristic(uart_service, _RX_UUID, write=True, write_no_response=True, capture=True, initial="Test") #this is the sending to LORA characteristic so Gameaioble.Changer has to write to it
 tx_characteristic = aioble.Characteristic(uart_service, _TX_UUID, read=True, notify=True) #this is the receiving from LORA characteristic so GameChanger has to read from it
 batt_level = aioble.Characteristic(battery_info, _BATTERY, read=True, notify=True)
 
@@ -153,7 +153,7 @@ async def peripheral_task():
             print("connected")          
             #await connection.disconnected(timeout_ms=None)
             while (connection.is_connected() and count <= MAX_COUNT):
-                print('*')
+                #print('*')
                 count = count + 1
                 await asyncio.sleep_ms(1000)
             else:
@@ -236,53 +236,52 @@ async def rx_task():
             continue
     
         if alive:             
-            if rx_characteristic:
-                try:
-                    print("Waiting for RX chars...")
-                    connection, rec_val = await rx_characteristic.written()  #rx_characteristic.write()
-                    RawMessage = rec_val.decode('ascii')
-                    print (f"Received: {repr(RawMessage)}")
-                    FirstChar = RawMessage[0]            
-                    Message = RawMessage[1:]
-                    print (f"First Char: {repr(FirstChar)}, Message: {repr(Message)}")
-                    if FirstChar == "T":
-                        print ("inside T")
-                        code = lora.send_transparent_message(Message)
-                        print(f"Send Radio message: {repr(Message)}", ResponseStatusCode.get_description(code))
-                        tx_characteristic.write(Message.encode('ascii'), send_update=True)
-                    elif FirstChar == "R":
-                        code, configuration = lora.get_configuration()
+            try:
+                print("Waiting for RX chars...")
+                connection, rec_val = await rx_characteristic.written()  #rx_characteristic.write()
+                RawMessage = rec_val.decode('ascii')
+                print (f"Received: {repr(RawMessage)}")
+                FirstChar = RawMessage[0]            
+                Message = RawMessage[1:]
+                print (f"First Char: {repr(FirstChar)}, Message: {repr(Message)}")
+                if FirstChar == "T":
+                    print ("inside T")
+                    code = lora.send_transparent_message(Message)
+                    print(f"Send Radio message: {repr(Message)}", ResponseStatusCode.get_description(code))
+                 #  tx_characteristic.write(Message.encode('ascii'), send_update=True)
+                elif FirstChar == "R":
+                    code, configuration = lora.get_configuration()
+                    print_configuration(configuration)
+                elif FirstChar == "C":
+                    cH = int(Message)
+                    if cH >= 0 and cH < 32:
+                        configuration.CHAN = int(Message)
                         print_configuration(configuration)
-                    elif FirstChar == "C":
-                        cH = int(Message)
-                        if cH >= 0 and cH < 32:
-                            configuration.CHAN = int(Message)
-                            print_configuration(configuration)
-                        else:
-                            print("Invalid Channel: ", Message)
-                    elif FirstChar == "A":
-                        L_Mess = Message.split(",")
-                        aH = int(L_Mess[0])
-                        aL = int(L_Mess[1])
-                        if aH >= 0 and aH < 256 and aL >= 0 and aL < 256:
-                            configuration.ADDH = int(L_Mess[0])
-                            configuration.ADDL = int(L_Mess[1])
-                            print_configuration(configuration)
-                        else:
-                            print("Invalid Values for Address: ", Message)
-                    elif FirstChar == "P":
-                            code, confSetted = lora.set_configuration(configuration)
-                            print("Programming New Config! ", ResponseStatusCode.get_description(code))
-                            print_configuration(configuration)
-                            print_configuration(confSetted)
                     else:
-                        print("Got Rubbish!...ignoring this: ", Message)                              
-                    #await asyncio.sleep_ms(50)
+                        print("Invalid Channel: ", Message)
+                elif FirstChar == "A":
+                    L_Mess = Message.split(",")
+                    aH = int(L_Mess[0])
+                    aL = int(L_Mess[1])
+                    if aH >= 0 and aH < 256 and aL >= 0 and aL < 256:
+                        configuration.ADDH = int(L_Mess[0])
+                        configuration.ADDL = int(L_Mess[1])
+                        print_configuration(configuration)
+                    else:
+                        print("Invalid Values for Address: ", Message)
+                elif FirstChar == "P":
+                    code, confSetted = lora.set_configuration(configuration)
+                    print("Programming New Config! ", ResponseStatusCode.get_description(code))
+                    print_configuration(configuration)
+                    print_configuration(confSetted)
+                else:
+                    print("Got Rubbish!...ignoring this: ", Message)                              
+                    await asyncio.sleep_ms(50)
                     
-                except (TypeError, asyncio.TimeoutError, asyncio.GattError):
-                    print(f'something went wrong; remote disconnected?')
-                    connected = False
-                    alive = False
+            except (TypeError, asyncio.TimeoutError, asyncio.GattError):
+                print(f'something went wrong; remote disconnected?')
+                connected = False
+                alive = False
             
 async def read_voltage():
     print ('read voltage started')
