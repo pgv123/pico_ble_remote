@@ -158,7 +158,8 @@ async def peripheral_task():
                 await asyncio.sleep_ms(1000)
             else:
                 print(f'disconnected with count: {count}')
-                #machine.reset()
+                machine.reset()
+                count = 0
                 connected = False
                 connection = None
 
