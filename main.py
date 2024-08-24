@@ -1,5 +1,5 @@
 import sys
-import aioble
+import pv_aioble as aioble
 #from libs.peripheral import advertise
 import bluetooth
 from lora_e32 import Logger, LoRaE32, print_configuration, Configuration
@@ -158,8 +158,7 @@ async def peripheral_task():
                 await asyncio.sleep_ms(1000)
             else:
                 print(f'disconnected with count: {count}')
-                machine.reset()
-                count = 0
+                #machine.reset()
                 connected = False
                 connection = None
 
