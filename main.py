@@ -1,5 +1,5 @@
 import sys
-import pv_aioble as aioble
+import aioble
 #from libs.peripheral import advertise
 import bluetooth
 from lora_e32 import Logger, LoRaE32, print_configuration, Configuration
@@ -137,7 +137,7 @@ connection = None
 # Tasks
 async def peripheral_task():
     print('peripheral task started')
-    global connected, connection, message, Project, count
+    global connected, connection, message, Project, count_flag, count
     connected = False
     while not connected:
         print('Commence advertising!')
@@ -150,20 +150,23 @@ async def peripheral_task():
         ) as connection:
             print("Connection from, ", connection.device)
             connected = True
-            print("connected")          
+            print("connected")
+            count_flag = False #is only set by receiving the keepalive         
             #await connection.disconnected(timeout_ms=None)
             while (connection.is_connected() and count <= MAX_COUNT):
                 #print('*')
-                count = count + 1
+                if count_flag:
+                    count = count + 1
                 await asyncio.sleep_ms(1000)
             else:
                 print(f'disconnected with count: {count}')
-                #machine.reset()
+                machine.reset()
+                count = 0
                 connected = False
                 connection = None
 
 async def keepalive_task():
-    global connected, connection, count
+    global connected, connection, count, count_flag
     print('keep alive task started')
 
     count = 0
@@ -184,6 +187,7 @@ async def keepalive_task():
                     ret_char = keepalive.decode('ascii')
                     if ret_char == "OK":
                         count = 0       #go back to the start...it's alive!
+                        count_flag = True
                         print(ret_char)
                         ret_char = ''
                         keepalive_characteristic.write(ret_char.encode('ascii'))
@@ -251,12 +255,13 @@ async def rx_task():
                  #  tx_characteristic.write(Message.encode('ascii'), send_update=True)
                 elif FirstChar == "R":
                     code, configuration = lora.get_configuration()
-                    print_configuration(configuration)
+                   #print_configuration(configuration)
                 elif FirstChar == "C":
                     cH = int(Message)
                     if cH >= 0 and cH < 32:
                         configuration.CHAN = int(Message)
-                        print_configuration(configuration)
+                        print(configuration.CHAN)
+                        #print_configuration(configuration)
                     else:
                         print("Invalid Channel: ", Message)
                 elif FirstChar == "A":
@@ -266,14 +271,15 @@ async def rx_task():
                     if aH >= 0 and aH < 256 and aL >= 0 and aL < 256:
                         configuration.ADDH = int(L_Mess[0])
                         configuration.ADDL = int(L_Mess[1])
-                        print_configuration(configuration)
+                        print("New Address: ", configuration.ADDH, configuration.ADDL)
+                        #print_configuration(configuration)
                     else:
                         print("Invalid Values for Address: ", Message)
                 elif FirstChar == "P":
                     code, confSetted = lora.set_configuration(configuration)
                     print("Programming New Config! ", ResponseStatusCode.get_description(code))
-                    print_configuration(configuration)
-                    print_configuration(confSetted)
+                    #print_configuration(configuration)
+                    #print_configuration(confSetted)
                 else:
                     print("Got Rubbish!...ignoring this: ", Message)                              
                     await asyncio.sleep_ms(50)
