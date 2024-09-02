@@ -71,6 +71,12 @@ lora = LoRaE32('433T20D', uart1, aux_pin=3, m0_pin=6, m1_pin=7)
 code = lora.begin()
 print("Initialization: {}", ResponseStatusCode.get_description(code))
 code, configuration = lora.get_configuration()
+
+print("Retrieve configuration: {}", ResponseStatusCode.get_description(code))
+
+print_configuration(configuration)
+
+
 print("Address H:", configuration.ADDH, " L:",configuration.ADDL," Channel: ",configuration.CHAN)
 
 #Functions
@@ -259,6 +265,7 @@ async def rx_task():
                 elif FirstChar == "C":
                     cH = int(Message)
                     if cH >= 0 and cH < 32:
+                        code, configuration = lora.get_configuration()                        
                         configuration.CHAN = int(Message)
                         print(configuration.CHAN)
                         #print_configuration(configuration)
@@ -269,6 +276,8 @@ async def rx_task():
                     aH = int(L_Mess[0])
                     aL = int(L_Mess[1])
                     if aH >= 0 and aH < 256 and aL >= 0 and aL < 256:
+                        code, configuration = lora.get_configuration()                        
+                        print("New aH and aL: ", aH, aL)
                         configuration.ADDH = int(L_Mess[0])
                         configuration.ADDL = int(L_Mess[1])
                         print("New Address: ", configuration.ADDH, configuration.ADDL)
