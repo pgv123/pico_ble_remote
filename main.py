@@ -104,14 +104,54 @@ readproj = False
 while not readproj:
     try:
         with open('project.txt','r') as f:
-            Project = f.read().strip()
-        readproj = True
+            Project = f.readline().strip()
+            Radio_Channel = int(f.readline().strip())
+            Radio_Addr_High = int(f.readline().strip())
+            Radio_Addr_Low = int(f.readline().strip())
+            Radio_Programmed = int(f.readline().strip())       
+            readproj = True
     except OSError:              #I think this means there is no such file
         with open('project.txt','w') as f:
             f.write('000000')
             Project = "000000"
+            f.write('\n10')  # Default Radio Channel
+            f.write('\n0')   # Default Radio Address High
+            f.write('\n0')   # Default Radio Address Low
+            f.write('\n0')  # Default Radio Programmed (0 = not programmed)
+            Radio_Channel = 10
+            Radio_Addr_High = 0
+            Radio_Addr_Low = 0
+            Radio_Programmed = 0
 
 print (f'Project No: {Project}')
+print (f'Radio Channel: {Radio_Channel}')
+print (f'Radio Address High: {Radio_Addr_High}')
+print (f'Radio Address Low: {Radio_Addr_Low}')
+print (f'Radio Programmed: {Radio_Programmed}')
+
+if Radio_Programmed == 0:
+    print("Programming Radio")
+    configuration.CHAN = Radio_Channel
+    configuration.ADDH = Radio_Addr_High
+    configuration.ADDL = Radio_Addr_Low
+    code, confSetted = lora.set_configuration(configuration)
+    print("Programming New Config! ", ResponseStatusCode.get_description(code))
+    print_configuration(configuration)
+    print_configuration(confSetted)
+    Radio_Programmed = 1
+    with open('project.txt','w') as f:
+        f.write(Project)
+        f.write('\n')
+        f.write(str(Radio_Channel))
+        f.write('\n')
+        f.write(str(Radio_Addr_High))
+        f.write('\n')
+        f.write(str(Radio_Addr_Low))
+        f.write('\n')
+        f.write(str(Radio_Programmed))
+        f.write('\n')
+else:
+    print("Radio already programmed")
 
 # Services and Characteristics
 device_info = aioble.Service(_DEVICE_INFO_UUID)
