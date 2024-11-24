@@ -45,7 +45,7 @@
 # THE SOFTWARE.
 #############################################################################################
 
-from lora_e32_constants import UARTParity, UARTBaudRate, TransmissionPower, ForwardErrorCorrectionSwitch, \r
+from lora_e32_constants import UARTParity, UARTBaudRate, TransmissionPower, ForwardErrorCorrectionSwitch, \
     WirelessWakeUpTime, IODriveMode, FixedTransmission, AirDataRate, OperatingFrequency
 from lora_e32_operation_constant import ResponseStatusCode, ModeType, ProgramCommand, SerialUARTBaudRate
 
@@ -167,10 +167,10 @@ class Configuration:
         hex_array = [self.HEAD, self.ADDH, self.ADDL, 0, 0, 0]
         hex_array[3] = self.SPED.airDataRate | (self.SPED.uartBaudRate << 3) | (self.SPED.uartParity << 6)
         hex_array[4] = self.CHAN
-        hex_array[5] = self.OPTION.transmissionPower | \r
-                       (self.OPTION.fec << 2) | \r
-                       (self.OPTION.wirelessWakeupTime << 3) | \r
-                       (self.OPTION.ioDriveMode << 6) | \r
+        hex_array[5] = self.OPTION.transmissionPower | \
+                       (self.OPTION.fec << 2) | \
+                       (self.OPTION.wirelessWakeupTime << 3) | \
+                       (self.OPTION.ioDriveMode << 6) | \
                        (self.OPTION.fixedTransmission << 7)
         # hex_array[6] = self.OPTION.fixedTransmission << 7
         return hex_array
