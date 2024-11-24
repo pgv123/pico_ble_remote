@@ -108,17 +108,17 @@ while not readproj:
             Radio_Channel = int(f.readline().strip())
             Radio_Addr_High = int(f.readline().strip())
             Radio_Addr_Low = int(f.readline().strip())
-            Radio_Programmed = int(f.readline().strip())       
+            Radio_Programmed = int(f.readline().strip())  
             readproj = True
     except OSError:              #I think this means there is no such file
         with open('project.txt','w') as f:
             f.write('000000')
             Project = "000000"
-            f.write('\n10')  # Default Radio Channel
+            f.write('\n23')  # Default Radio Channel
             f.write('\n0')   # Default Radio Address High
             f.write('\n0')   # Default Radio Address Low
             f.write('\n0')  # Default Radio Programmed (0 = not programmed)
-            Radio_Channel = 10
+            Radio_Channel = 23
             Radio_Addr_High = 0
             Radio_Addr_Low = 0
             Radio_Programmed = 0
@@ -129,7 +129,7 @@ print (f'Radio Address High: {Radio_Addr_High}')
 print (f'Radio Address Low: {Radio_Addr_Low}')
 print (f'Radio Programmed: {Radio_Programmed}')
 
-if Radio_Programmed == 0:
+if Radio_Programmed == 1:
     print("Programming Radio")
     configuration.CHAN = Radio_Channel
     configuration.ADDH = Radio_Addr_High
@@ -138,7 +138,7 @@ if Radio_Programmed == 0:
     print("Programming New Config! ", ResponseStatusCode.get_description(code))
     print_configuration(configuration)
     print_configuration(confSetted)
-    Radio_Programmed = 1
+    Radio_Programmed = 0
     with open('project.txt','w') as f:
         f.write(Project)
         f.write('\n')
