@@ -190,7 +190,7 @@ async def peripheral_task():
         count = 0
         async with await aioble.advertise(
             ADV_INTERVAL_MS,
-            name="AusSport Sboard P" + Project,
+            name="AusSport" + Project,
             appearance=_BLE_APPEARANCE_GENERIC_REMOTE_CONTROL,
             services=[_UART_UUID] #_BATTERY_UUID, _DEVICE_INFO_UUID, _PROJECT_UUID] can't use these as goes over length
         ) as connection:
