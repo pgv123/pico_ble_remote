@@ -303,7 +303,7 @@ class LoRaE32:
 
     def begin(self, uart_parity=UARTParity.MODE_00_8N1):
         self.uart.init(baudrate=self.uart_baudrate, bits=8, parity=UARTParity.get_uart_value(uart_parity), stop=1,
-                       timeout=1000, timeout_char=1000)
+                       timeout=50, timeout_char=50)
 
         self.m0 = None
         self.m1 = None
