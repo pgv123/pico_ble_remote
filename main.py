@@ -179,6 +179,7 @@ rx_characteristic.write("AusSport Scoreboards Messaging via BLE and Android Tabl
 #Global Variables
 connected = False
 connection = None
+messaging = False
 
 # Tasks
 async def peripheral_task():
@@ -275,7 +276,7 @@ async def proj_task():
                     alive = False
 
 async def rx_task():
-    global connected, connection
+    global connected, connection, messaging
     print('rx task started')
     while True:
         if connected:
@@ -296,8 +297,10 @@ async def rx_task():
                 print (f"First Char: {repr(FirstChar)}, Message: {repr(Message)}")
                 if FirstChar == "T":
                     print ("inside T")
+                    messaging = True
                     code = lora.send_transparent_message(Message)
                     print(f"Send Radio message: {repr(Message)}", ResponseStatusCode.get_description(code))
+                    
                  #  tx_characteristic.write(Message.encode('ascii'), send_update=True)
                 elif FirstChar == "R":
                     code, configuration = lora.get_configuration()
@@ -360,14 +363,37 @@ async def read_voltage():
             print(f'Voltage {voltage}')
         await asyncio.sleep_ms(5_000)
 
+async def message_task():   #let the world know we are messaging
+    global messaging
+    flashing = False
+    print ('message task started')
+    while True:
+        
+        if messaging:
+            flashing = True
+            messaging = False
+        if flashing:
+            for i in range(5):
+                led.value(1)
+                await asyncio.sleep_ms(20)
+                led.value(0)
+                await asyncio.sleep_ms(80)
+        flashing = False
+
+        await asyncio.sleep_ms(5)
+
 
 async def blink_task():
     print ('blink task started')
-    global connected
+    global connected, messaging
     toggle = True
     while True:
         toggle = not toggle
-        blink = 1500 if connected else 350
+        if connected:
+            blink = 1500
+        else:
+            blink = 350
+
         led.value(toggle)
         await asyncio.sleep_ms(8)
         led.value(0)
@@ -378,6 +404,7 @@ async def main():
         asyncio.create_task(peripheral_task()),
         asyncio.create_task(blink_task()),
         asyncio.create_task(rx_task()),
+        asyncio.create_task(message_task()),
         asyncio.create_task(proj_task()),
         asyncio.create_task(keepalive_task()),        
         asyncio.create_task(read_voltage())
